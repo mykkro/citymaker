@@ -269,7 +269,7 @@ test("the world exports as a GLB with one node per layer", async () => {
   assert.equal(glb.getUint32(8, true), glb.byteLength);
   const jsonLength = glb.getUint32(12, true);
   const json = JSON.parse(new TextDecoder().decode(new Uint8Array(glb.buffer, 20, jsonLength)));
-  assert.deepEqual(json.nodes.map((n) => n.name), ["island", "water", "roads", "buildings", "plants"]);
+  assert.deepEqual(json.nodes.map((n) => n.name).filter((n) => n !== "boats"), ["island", "water", "roads", "buildings", "plants"]);
   const binLength = glb.getUint32(20 + jsonLength, true);
   assert.equal(binLength, json.buffers[0].byteLength);
   for (const view of json.bufferViews) assert.ok(view.byteOffset + view.byteLength <= binLength);
@@ -384,4 +384,29 @@ test("density adds houses", () => {
   const houses = (density) => generateWorld({ seed: 9, size: "large", settlement: "town", density, features: [] })
     .settlement.buildings.filter((b) => b.type === "house").length;
   assert.ok(houses(1) > houses(0) * 1.3, `${houses(0)} vs ${houses(1)}`);
+});
+
+test("harbours: jetties and boats for a village, a quay, breakwater and lighthouse for a town", () => {
+  const village = generateWorld({ seed: 7, size: "large", settlement: "village" }).settlement.harbour;
+  assert.ok(village.piers.length >= 1 && village.boats.length >= 1, "jetty and boats");
+  assert.equal(village.quays.length, 0);
+  const world = generateWorld({ seed: 9, size: "large", settlement: "town" });
+  const harbour = world.settlement.harbour;
+  assert.equal(harbour.quays.length, 1);
+  assert.equal(harbour.moles.length, 1);
+  assert.ok(world.settlement.buildings.some((b) => b.type === "lighthouse"));
+  // The quay is solid, level ground; boats float in water.
+  const [q] = harbour.quays;
+  assert.ok(Math.abs(world.field.heightAt(...q.centre) - q.height) < 0.05, "quay top is level");
+  for (const boat of harbour.boats.filter((b) => !b.beached)) assert.ok(world.field.heightAt(boat.x, boat.z) < -0.5, `boat at ${boat.x}, ${boat.z} is aground`);
+  assert.equal(generateWorld({ seed: 9, size: "large", settlement: "town", features: [] }).settlement.harbour, null);
+});
+
+test("a metropolis is bigger than a city, with more squares", () => {
+  const city = generateWorld({ seed: 5, size: "giant", settlement: "city" }).settlement;
+  const metropolis = generateWorld({ seed: 5, size: "giant", settlement: "metropolis" }).settlement;
+  assert.ok(metropolis.radius > city.radius);
+  assert.ok(metropolis.squares.length > city.squares.length, `${metropolis.squares.length} vs ${city.squares.length} squares`);
+  const houses = (s) => s.buildings.filter((b) => b.type === "house").length;
+  assert.ok(houses(metropolis) > houses(city), `${houses(metropolis)} vs ${houses(city)} houses`);
 });

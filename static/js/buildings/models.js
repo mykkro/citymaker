@@ -6,6 +6,7 @@ import * as mat4 from "../mat4.js";
 import { box, cone, cylinder, ellipsoid, flatShade, merge, transform } from "../shapes.js";
 import { ARCHITECTURES } from "../world/architecture.js";
 import { fortificationGeometry } from "./fortifications.js";
+import { boatGeometries, harbourGeometry } from "./harbour.js";
 import { chimney, coneRoof, cross, door, flatRoof, frustum, gableRoof, GLASS, place, plinth, pyramid, timberFrame, window } from "./parts.js";
 
 const STOREY = 2.6;      // metres per storey
@@ -25,11 +26,15 @@ export const SAIL_HUB = [0, 8.6, 2.15]; // the sails' hub, in the mill's own fra
 const X_AXIS = [1, 0, 0], Y_AXIS = [0, 1, 0], Z_AXIS = [0, 0, 1];
 
 // climateId: the world's climate (tundra roofs carry snow).
-// Returns { geometry, sails (geometry around the hub), mills: [{ x, y, z, yaw, phase }], obstacles }.
+// Returns { geometry, sails (geometry around the hub), mills: [{ x, y, z, yaw, phase }], obstacles,
+//   boats: [{ x, z, angle, kind, beached, phase }], boatGeometries: { kind: geometry } }.
 export function buildBuildings(settlement, field, climateId, random) {
   const style = { ...ARCHITECTURES[settlement.architecture ?? "cottage"], snow: climateId === "tundra" };
   const parts = [], mills = [], obstacles = [];
-  const makers = { house: style.hut ? hut : house, church, hall, mill, well, fountain, stall, barn, shed, haystack, shrine };
+  const makers = {
+    house: style.hut ? hut : house, church, hall, mill, well, fountain, stall, barn, shed, haystack, shrine,
+    lighthouse, warehouse, boathouse, crane,
+  };
   for (const b of settlement.buildings ?? []) {
     const make = makers[b.type];
     if (!make) continue;
@@ -48,7 +53,10 @@ export function buildBuildings(settlement, field, climateId, random) {
     parts.push(wall.geometry);
     obstacles.push(...wall.obstacles);
   }
-  return { geometry: merge(...parts), sails: sails(), mills, obstacles };
+  const harbour = settlement.harbour;
+  if (harbour) parts.push(harbourGeometry(harbour, field, random));
+  const boats = (harbour?.boats ?? []).map((b) => ({ ...b, phase: random() * Math.PI * 2 }));
+  return { geometry: merge(...parts), sails: sails(), mills, obstacles, boats, boatGeometries: boatGeometries() };
 }
 
 // Roof material and colour for gable roofs in this style (snow on tundra roofs).
@@ -413,6 +421,75 @@ function shrine(b, style, random) {
   );
 }
 
+// ---------- Harbour buildings ----------
+
+// A lighthouse: a white tapering tower with red bands, a railed gallery, a glowing lantern
+// and a red cap.
+function lighthouse() {
+  const white = [0.95, 0.95, 0.92], red = [0.75, 0.15, 0.13];
+  const parts = [
+    frustum({ r0: 1.6, r1: 1.1, y0: -0.3, y1: 10, color: white, sides: 12 }),
+    frustum({ r0: 1.47, r1: 1.4, y0: 3, y1: 4.3, color: red, sides: 12 }),
+    frustum({ r0: 1.3, r1: 1.24, y0: 6.6, y1: 7.9, color: red, sides: 12 }),
+    cylinder([0, 10.2, 0], 1.55, 0.25, [0.25, 0.25, 0.27], 12),
+    cylinder([0, 11.6, 0], 0.85, 1.4, [1, 0.93, 0.62], 10),
+    place(coneRoof({ radius: 1.1, height: 1.1, color: red, sides: 12 }), 0, 11.55, 0),
+    place(door({ width: 0.9, height: 1.9, frame: [0.3, 0.3, 0.32], leaf: [0.25, 0.32, 0.45] }), 0, -0.05, 1.56),
+  ];
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    parts.push(box([Math.cos(a) * 1.5, 10.6, Math.sin(a) * 1.5], [0.06, 0.6, 0.06], [0.2, 0.2, 0.22]));
+  }
+  parts.push(frustum({ r0: 1.52, r1: 1.52, y0: 10.85, y1: 10.92, color: [0.2, 0.2, 0.22], sides: 12 }));
+  return merge(...parts);
+}
+
+// A warehouse on the quay: two tall storeys, big doors facing the water, a loading door
+// and hoist beam above them.
+function warehouse(b, style, random) {
+  const [w, d] = b.size;
+  const brick = style.roof === "flat" || style.church === "dome" ? style.walls[0].map((c) => c * 0.95) : [0.6, 0.36, 0.28];
+  const roof = roofOf(style, random);
+  const eave = 5.2;
+  const parts = [
+    place(plinth(w, d, style.stone), 0, 0, 0),
+    box([0, eave / 2, 0], [w, eave, d], brick),
+    box([-2, 1.4, d / 2 + 0.04], [2, 2.8, 0.08], DARK_WOOD),
+    box([2, 1.4, d / 2 + 0.04], [2, 2.8, 0.08], DARK_WOOD),
+    box([0, 3.9, d / 2 + 0.04], [1.4, 1.5, 0.08], DARK_WOOD),
+    box([0, eave - 0.3, d / 2 + 0.6], [0.2, 0.2, 1.4], DARK_WOOD), // hoist beam
+    box([0, eave - 1.1, d / 2 + 1.25], [0.03, 1.5, 0.03], [0.2, 0.2, 0.2]),
+  ];
+  for (const x of [-w / 2 + 1, w / 2 - 1]) parts.push(place(window({ width: 0.7, height: 0.8, frame: style.trim }), x, 3.9, d / 2));
+  if (style.roof === "flat") parts.push(place(flatRoof({ width: w, depth: d, color: brick }), 0, eave, 0));
+  else parts.push(place(gableRoof({ length: w, span: d, pitch: Math.min(style.pitch, 0.6), material: roof.material === "thatch" ? "tile" : roof.material, color: roof.material === "thatch" ? SLATE : roof.color, gableColor: brick }), 0, eave, 0));
+  return merge(...parts);
+}
+
+// A boathouse on the shore: a wooden shed open toward the water.
+function boathouse(b, style, random) {
+  const [w, d] = b.size;
+  const roof = roofOf(style, random);
+  return merge(
+    box([0, 1.4, 0], [w, 2.8, d], WOOD),
+    box([0, 1.1, d / 2 + 0.02], [w - 1, 2.2, 0.05], [0.08, 0.08, 0.1]),
+    place(gableRoof({ length: d, span: w, pitch: Math.max(style.pitch, 0.6), material: roof.material, color: roof.color, gableColor: WOOD }), 0, 2.8, 0, Math.PI / 2),
+  );
+}
+
+// A harbour crane: a timber mast on a stone base, a jib reaching out over the water, a rope and a crate.
+function crane() {
+  const tilt = mat4.multiply(mat4.translation(0, 6, 0), mat4.rotationAxis(X_AXIS, 0.55));
+  const tip = mat4.transformPoint(tilt, [0, 0, 5]);
+  return merge(
+    box([0, 0.3, 0], [2, 0.6, 2], [0.62, 0.6, 0.56]),
+    box([0, 3.3, 0], [0.4, 6, 0.4], WOOD),
+    transform(box([0, 0, 2.5], [0.28, 0.28, 5], WOOD), tilt),
+    box([tip[0], tip[1] - 1.6, tip[2]], [0.04, 3.2, 0.04], [0.2, 0.2, 0.2]),
+    box([tip[0], tip[1] - 3.5, tip[2]], [0.9, 0.7, 0.9], [0.62, 0.46, 0.3]),
+  );
+}
+
 // ---------- Fences and walls ----------
 
 // Wooden post-and-rail fences, or dry-stone walls, following the ground in short pieces.
@@ -454,7 +531,8 @@ function fenceGeometry(fence, field, style, random) {
 // Circles covering each wing's rectangle (or the round hut / mill), in world coordinates.
 // Small things (stalls, haystacks, shrines) are left walkable.
 function footprintCircles(b) {
-  if (b.type === "stall" || b.type === "haystack" || b.type === "shrine") return [];
+  if (b.type === "stall" || b.type === "haystack" || b.type === "shrine" || b.type === "crane") return [];
+  if (b.type === "lighthouse") return [{ x: b.centre[0], z: b.centre[1], radius: 1.6, static: true }];
   const front = [Math.sin(b.angle), Math.cos(b.angle)], side = [front[1], -front[0]];
   const toWorld = (x, z) => [b.centre[0] + side[0] * x + front[0] * z, b.centre[1] + side[1] * x + front[1] * z];
   if (b.type === "mill") return [{ x: b.centre[0], z: b.centre[1], radius: 2.5, static: true }];

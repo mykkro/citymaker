@@ -8,8 +8,8 @@ streets yourself. Export the result as JSON (to load it back later) or as a GLB
 
 Today it builds the landscape, the roads and squares, and the buildings of villages
 and small towns: houses in seven architecture styles, churches, town halls, market
-stalls, windmills, wells and fountains, farms with fields, fences, and town walls with
-towers and gates. Bigger city buildings come next (see the [roadmap](#roadmap)).
+stalls, windmills, wells and fountains, farms with fields, fences, town walls with
+towers and gates, and harbours with jetties, quays, a lighthouse and boats. Bigger city buildings come next (see the [roadmap](#roadmap)).
 
 Everything runs in the browser: plain JavaScript and raw WebGL2, with no
 libraries, no build step and no backend. Any static file server will do.
@@ -20,7 +20,9 @@ libraries, no build step and no backend. Any static file server will do.
 | --- | --- | --- |
 | ![Market stalls and a fountain on a cobbled square, a town hall with a clock tower behind](media/market.png) | ![White flat-roofed houses with blue shutters, a blue-domed church and a town hall](media/town.png) | ![Red and ochre wooden houses under snowy roofs inside a log palisade](media/nordic.png) |
 
-![A savanna island ringed by cliffs, with a mountain, bays, rocky islets and a village of round huts](media/coast.png)
+| A harbour | A metropolis | Cliffs, bays and a peak |
+| --- | --- | --- |
+| ![A walled Mediterranean city's harbour: warehouses on a stone quay, jetties, a marina with sailboats, a breakwater and a lighthouse](media/harbour.png) | ![A walled metropolis on a giant island: a dense street grid with several squares, a harbour at the top](media/metropolis.png) | ![A savanna island ringed by cliffs, with a mountain, bays, rocky islets and a village of round huts](media/coast.png) |
 
 ## Features
 
@@ -45,7 +47,7 @@ libraries, no build step and no backend. Any static file server will do.
     | Tundra        | snowy pines, dead trees, snow from a low snow line     | grey granite                |
 
     High mountains get snowy peaks in every climate except the desert.
-  - **Settlement:** none, hamlet, village, town or city (see below).
+  - **Settlement:** none, hamlet, village, town, city or metropolis (see below).
 - **Settlements.** The town goes on the flattest open ground near the middle of the island:
   - **Roads** run from it to the coast, routed around water and steep slopes, and
     join up where they meet.
@@ -63,6 +65,16 @@ libraries, no build step and no backend. Any static file server will do.
   - **Site plan:** a map of what every half metre of the island is used for (free
     ground, water, path, track, street, square, building or yard) and how far it
     is from the nearest paving. The urban planner and the plants use it.
+
+  | Settlement | Square    | Streets                                          | Roads to the coast |
+  | ---------- | --------- | ------------------------------------------------ | ------------------ |
+  | Hamlet     |           | a gravel crossroads                              | 2 gravel tracks    |
+  | Village    | 12 × 9 m  | a few gravel lanes                               | 3 gravel tracks    |
+  | Town       | 18 × 13 m | cobbled grid, about 45 m out                     | 4                  |
+  | City       | 24 × 18 m | cobbled grid, about 70 m out, a second square    | 6                  |
+  | Metropolis | 30 × 22 m | cobbled grid, about 105 m out, four more squares | 8                  |
+
+  A metropolis needs room: pick a vast or giant island for it.
 - **Buildings,** placed by the urban planner on the site plan. The **Buildings**
   panel sets the architecture (from the climate, or any style), the density,
   height and shapes of the houses, and which of these the planner may build:
@@ -74,7 +86,20 @@ libraries, no build step and no backend. Any static file server will do.
   | Wells & fountain   | a well on the village square and by the roads; a fountain on a town square                    |
   | Market & town hall | striped market stalls round the square; in towns, a town hall with an arcade and a clock tower |
   | Farms & fields     | barns on the outskirts with haystacks and a field behind: wheat, furrows, vegetables, lavender, vines or millet |
-  | Town walls         | stone walls with battlements, round towers and gatehouses round a town; a log palisade with watchtowers round a village. Houses stay inside |
+  | Town walls         | stone walls with battlements, round towers and gatehouses round a town; a log palisade with watchtowers round a village. Houses stay inside, and the wall opens toward the harbour |
+  | Harbour & boats    | see below |
+
+  **Harbours** go on the best stretch of coast near the settlement: sheltered, not a
+  cliff, with deep water close in, and a road leads down to them.
+
+  | Settlement            | Harbour                                                                                   |
+  | --------------------- | ----------------------------------------------------------------------------------------- |
+  | Hamlet, village       | wooden jetties on posts with rowboats and fishing boats, boats pulled up on the beach, a boathouse |
+  | Town                  | a stone quay with bollards and a warehouse, a breakwater curving round the basin with a lighthouse at its tip, a jetty, fishing boats |
+  | City, metropolis      | all that, more warehouses, a harbour crane, and a marina of floating pontoons with sailboats |
+
+  Quays and breakwaters are solid ground; jetties and pontoons are decks you can walk
+  on. Moored boats bob on the waves.
 
   **Houses** line both sides of the roads, facing them, closer together toward the
   centre: rectangles, L shapes and (in towns) T shapes, one to several storeys,
@@ -142,12 +167,12 @@ don't load JavaScript modules from `file://` pages.
 | `cliffs`  | `cliffs=60`       | cliffs, from 0 (beaches all round) to 100 (mostly cliffs)                      |
 | `islets`  | `islets=50`       | islets, from 0 (none) to 100 (many)                                            |
 | `climate` | `climate=savanna` | `mild`, `forest`, `mediterranean`, `tropical`, `savanna`, `desert` or `tundra` |
-| `town`    | `town=city`       | `none`, `hamlet`, `village`, `town` or `city`                                  |
+| `town`    | `town=city`       | `none`, `hamlet`, `village`, `town`, `city` or `metropolis`                    |
 | `arch`    | `arch=nordic`     | `auto`, `cottage`, `log`, `nordic`, `mediterranean`, `adobe`, `tropical` or `huts` |
 | `bdens`   | `bdens=80`        | building density, from 0 (scattered) to 100 (packed)                           |
 | `bheight` | `bheight=60`      | building height, from 0 (low) to 100 (tall)                                    |
 | `bvar`    | `bvar=90`         | house shapes, from 0 (plain) to 100 (varied)                                   |
-| `feat`    | `feat=church.mill.walls` | what may be built: `church`, `mill`, `wells`, `market`, `farms`, `walls` (all by default) |
+| `feat`    | `feat=church.mill.walls` | what may be built: `church`, `mill`, `wells`, `market`, `farms`, `walls`, `harbour` (all by default) |
 | `time`    | `time=21`         | start at 21:00 (the day starts at 10:00 by default)                            |
 
 For example: `http://127.0.0.1:8000/?seed=4&size=large&hills=35&veg=60&climate=mediterranean&town=town`.
@@ -179,7 +204,8 @@ so you can hide, edit or replace the layers separately:
 | `island` | the terrain, coloured by height, slope and climate |
 | `water`  | a flat, see-through sea over the whole map         |
 | `roads`  | paths, tracks, streets and squares: a mesh over the paved ground with the painted paving as its texture |
-| `buildings` | every building, fence and town wall; windmill sails at rest |
+| `buildings` | every building, fence, town wall and harbour structure; windmill sails at rest |
+| `boats`  | the boats, on a calm sea                                       |
 | `plants` | trees, bushes, rocks, grass and flowers            |
 
 The island, water and plants have their colours stored per vertex; the roads use
@@ -196,12 +222,12 @@ versions can save edits in the same file. A medium island is about 400 KB. The f
 ```jsonc
 {
   "format": "citymaker-world",
-  "version": 4,
+  "version": 5,
   "options": {
     "seed": 1, "size": "medium", "hilliness": 0.4, "vegetation": 0.5, "peaks": 0,
     "bays": 0.3, "cliffs": 0.25, "islets": 0.3, "climate": "mild", "settlement": "village",
     "architecture": "auto", "density": 0.5, "height": 0.3, "variety": 0.5,
-    "features": ["church", "mill", "wells", "market", "farms", "walls"]
+    "features": ["church", "mill", "wells", "market", "farms", "walls", "harbour"]
   },
   "terrain": {
     "tiles": 32,          // tiles along each edge of the square map
@@ -218,7 +244,8 @@ versions can save edits in the same file. A medium island is about 400 KB. The f
     "roads": [{ "type": "road", "width": 3.2, "points": [[x, z, y], ...] }],  // types: path, road, street
     "architecture": "cottage",  // the style the buildings were made in
     "buildings": [{
-      "type": "house",    // house, church, hall, mill, well, fountain, stall, barn, shed, haystack or shrine
+      "type": "house",    // house, church, hall, mill, well, fountain, stall, barn, shed, haystack, shrine,
+                          // lighthouse, warehouse, boathouse or crane
       "centre": [52.4, 61.9], "size": [8.1, 9.6], "angle": 2.31,  // bounding box; the front faces [sin(angle), cos(angle)]
       "floor": 2.18,      // height of the levelled ground it stands on
       "storeys": 1, "variant": 2, "roof": "gable",  // gable or flat
@@ -229,6 +256,13 @@ versions can save edits in the same file. A medium island is about 400 KB. The f
     "fortifications": {   // or null
       "kind": "stone",    // stone or palisade
       "ring": [[x, z], ...], "gates": [{ "x": 38.8, "z": 70.4, "angle": 2.58, "width": 5 }], "towers": [[x, z], ...]
+    },
+    "harbour": {          // or null
+      "quays": [{ "centre": [x, z], "size": [36, 10], "angle": 1.2, "height": 1.2 }],  // angle: heading out to sea
+      "moles": [{ "points": [[x, z], ...], "width": 5, "height": 1.4 }],                // breakwaters
+      "piers": [{ "start": [x, z], "end": [x, z], "width": 2.2, "height": 1, "kind": "jetty" }],  // jetty or pontoon
+      "boats": [{ "x": 120.5, "z": 40.2, "angle": 0.7, "kind": "fishing", "beached": false }],   // rowboat, fishing, sailboat
+      "structures": [...], "access": [x, z]
     }
   },
   "props": {
@@ -247,7 +281,7 @@ Positions are in metres from the map's corner, heights in metres above the sea
 The terrain heights already include the levelling under roads and squares.
 The site plan is not saved, because it is worked out again from the settlement
 when a file loads. Older files still load: version 1 without a settlement,
-version 2 without buildings, version 3 without fields and walls.
+version 2 without buildings, version 3 without fields and walls, version 4 without a harbour.
 
 ## Roadmap
 
@@ -256,8 +290,9 @@ version 2 without buildings, version 3 without fields and walls.
 3. **Village and town buildings** (done): houses in seven styles, churches, town
    halls, markets, windmills, wells, farms, fences and town walls, laid out by the
    urban planner and adjustable in the Buildings panel.
-4. **City buildings:** terraced houses, guild halls, cathedrals, a castle.
-5. **Town walls** and other fortifications.
+4. **Harbours and metropolises** (done): jetties, quays, breakwaters, lighthouses,
+   marinas and boats; a sixth, biggest settlement size.
+5. **City buildings:** terraced houses, guild halls, cathedrals, a castle.
 6. **Settlements that grow** from small villages into towns and cities.
 
 ## Tests
@@ -268,7 +303,7 @@ node --test tests/js/*.test.mjs
 
 The tests need Node 20 or later and nothing else. They cover world generation
 (terrain, coast, settlements, the site plan, buildings and their options, town
-walls, plants, options, JSON export and import, GLB export, the paving detail
+walls, harbours, metropolises, plants, options, JSON export and import, GLB export, the paving detail
 texture) and
 the app logic (collisions, dolphins, avatars, the day/night cycle, input and
 translations). They don't cover rendering.
@@ -290,6 +325,7 @@ static/js/
     climates.js     per-climate colours, plant rules and paving
     settlement.js   the settlement: site, square, roads, street grid, footpaths, levelling
     pathfind.js     least-cost routes over the terrain (A*)
+    harbour.js      the harbour: its site, quays, breakwater, jetties, marina and boats
     siteplan.js     what each spot is used for, and how far it is from paving
     planner.js      the urban planner: walls, church, hall, market, mills, houses, farms, wells, shrines
     architecture.js the architecture styles
@@ -303,6 +339,7 @@ static/js/
     parts.js        building parts: windows, doors, roofs, chimneys, timber framing, towers
     models.js       every building type, fences and yards, built from the parts in a style
     fortifications.js  town walls: stone walls, towers and gatehouses, or a palisade
+    harbour.js      jetties, pontoons, bollards, rock armour, and the boats
   layers.js         the world as named geometry layers, for export
   glb.js            binary glTF writer
   gl.js             shaders (lighting, shadows, fog, paving, see-through occluders), meshes, textures

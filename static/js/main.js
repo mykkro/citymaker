@@ -24,7 +24,7 @@ import { setSkyUniforms } from "./skycolor.js";
 import { buildTerrainGeometry } from "./terrain.js";
 import { createTouchControls, isTouchDevice } from "./touch.js";
 import { createWater } from "./water.js";
-import { SEA_LEVEL } from "./waves.js";
+import { SEA_LEVEL, waveHeight } from "./waves.js";
 import { CLIMATES } from "./world/climates.js";
 import { optionsFromQuery, optionsToQuery, SIZES } from "./world/options.js";
 import { generateWorld, worldFromJSON, worldToJSON } from "./world/world.js";
@@ -101,7 +101,28 @@ async function start() {
     const meshes = [createMesh(gl, buildTerrainGeometry(field, climate)), createMesh(gl, scenery.geometry)];
     const buildingsMesh = buildings.geometry.indices.length ? createMesh(gl, buildings.geometry) : null;
     const sailsMesh = buildings.mills.length ? createMesh(gl, buildings.sails) : null;
-    meshes.push(...[buildingsMesh, sailsMesh].filter(Boolean));
+    const boatMeshes = {};
+    if (buildings.boats.length) for (const [kind, geometry] of Object.entries(buildings.boatGeometries)) boatMeshes[kind] = createMesh(gl, geometry);
+    meshes.push(...[buildingsMesh, sailsMesh, ...Object.values(boatMeshes)].filter(Boolean));
+    // Jetties and pontoons are walkable: the player stands on their decks.
+    const decks = (world.settlement.harbour?.piers ?? []).map((pier) => {
+      const d = [pier.end[0] - pier.start[0], pier.end[1] - pier.start[1]];
+      const length = Math.hypot(...d);
+      return { ...pier, length, unit: [d[0] / length, d[1] / length] };
+    });
+    const walkable = {
+      size: field.size,
+      heightAt(x, z) {
+        let h = field.heightAt(x, z);
+        for (const deck of decks) {
+          const dx = x - deck.start[0], dz = z - deck.start[1];
+          const along = dx * deck.unit[0] + dz * deck.unit[1];
+          const across = Math.abs(dx * deck.unit[1] - dz * deck.unit[0]);
+          if (along >= -0.3 && along <= deck.length + 0.3 && across <= deck.width / 2 + 0.2) h = Math.max(h, deck.height + 0.1);
+        }
+        return h;
+      },
+    };
     const water = createWater(gl, field);
     const paving = createPavingTextures(world, climate, random);
     return {
@@ -110,6 +131,7 @@ async function start() {
       sceneryMesh: meshes[1],
       buildingsMesh, sailsMesh,
       mills: buildings.mills,
+      boats: buildings.boats, boatMeshes, walkable,
       bodies: [app.player, ...chickens, ...dolphins],
       dispose() {
         for (const mesh of meshes) mesh.dispose();
@@ -300,7 +322,7 @@ async function start() {
     for (const body of bodies) clampToBounds(body, scene.field.size);
     for (const chicken of scene.chickens) keepOnLand(chicken, scene.field); // pushed toward the sea: stay put
     if (app.mode === "explore") {
-      settlePlayer(player, scene.field, clock.elapsed);
+      settlePlayer(player, scene.walkable, clock.elapsed);
       if (player.avatar.id === "ball") rollPlayer(player);
       updateAvatar(player, dt);
     }
@@ -328,6 +350,17 @@ async function start() {
     gl.uniformMatrix4fv(u.uModel, false, mat4.identity()); // the avatar left its own transform set
     scene.sceneryMesh.draw();
     scene.buildingsMesh?.draw();
+    // Boats ride the waves (or lie tilted on the beach).
+    for (const boat of scene.boats) {
+      const t = app.clock.elapsed;
+      const y = boat.beached ? scene.field.heightAt(boat.x, boat.z) + 0.25 : waveHeight(boat.x, boat.z, t) - 0.05;
+      const roll = boat.beached ? 0.18 : Math.sin(t * 1.3 + boat.phase) * 0.05;
+      const pitch = boat.beached ? -0.05 : Math.sin(t * 0.9 + boat.phase * 1.7) * 0.03;
+      const model = [mat4.rotationAxis([0, 1, 0], boat.angle), mat4.rotationAxis([1, 0, 0], pitch), mat4.rotationAxis([0, 0, 1], roll)]
+        .reduce((acc, m) => mat4.multiply(acc, m), mat4.translation(boat.x, y, boat.z));
+      gl.uniformMatrix4fv(u.uModel, false, model);
+      scene.boatMeshes[boat.kind].draw();
+    }
     for (const mill of scene.mills) {
       const turn = mill.phase + app.clock.elapsed * SAIL_SPEED;
       const model = [mat4.rotationAxis([0, 1, 0], mill.yaw), mat4.rotationAxis([0, 0, 1], turn)]

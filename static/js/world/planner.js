@@ -380,6 +380,23 @@ function planWall(field, settlement, kind, seed, blocked) {
       }
     }
   }
+  // A harbour gate: the wall opens where it passes nearest the quay (or the jetty).
+  const harbour = settlement.harbour;
+  const landing = harbour?.quays[0]?.centre ?? harbour?.piers[0]?.start;
+  if (landing) {
+    let best = null;
+    for (let j = 1; j < ring.length; j++) {
+      const [ax, az] = ring[j - 1], [bx, bz] = ring[j];
+      const dx = bx - ax, dz = bz - az;
+      const t = Math.min(Math.max(((landing[0] - ax) * dx + (landing[1] - az) * dz) / (dx * dx + dz * dz || 1), 0), 1);
+      const x = ax + dx * t, z = az + dz * t, d = Math.hypot(landing[0] - x, landing[1] - z);
+      if (!best || d < best.d) best = { x, z, d, angle: Math.atan2(dx, dz) };
+    }
+    if (best.d < 30 && !gates.some((g) => Math.hypot(g.x - best.x, g.z - best.z) < 12)) {
+      const width = harbour.quays.length ? Math.min(harbour.quays[0].size[0] * 0.5, 16) : 5;
+      gates.push({ x: round2s(best.x), z: round2s(best.z), angle: round3(best.angle), width: round2s(width) });
+    }
+  }
   // Towers every few ring points, not crowding a gate (gates get their own towers).
   const towers = [];
   const every = kind === "stone" ? 3 : 4;

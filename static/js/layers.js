@@ -13,7 +13,7 @@ import { SEA_LEVEL } from "./world/heightmap.js";
 const WATER = [0.12, 0.45, 0.55];
 const ROAD_LIFT = 0.03; // the roads layer floats this far above the island
 
-// [{ name, geometry, material? }] in the order: island, water, roads, buildings, plants.
+// [{ name, geometry, material? }] in the order: island, water, roads, buildings, boats, plants.
 // pavingImage: the painted paving as PNG bytes (see pavingpaint.js); without it there is no roads layer.
 export function worldLayers(world, { pavingImage = null } = {}) {
   const { field, props } = world;
@@ -33,6 +33,12 @@ export function worldLayers(world, { pavingImage = null } = {}) {
     const sails = buildings.mills.map(({ x, y, z, yaw }) =>
       transform(buildings.sails, mat4.multiply(mat4.translation(x, y, z), mat4.rotationAxis([0, 1, 0], yaw))));
     layers.push({ name: "buildings", geometry: merge(buildings.geometry, ...sails) });
+  }
+  // Boats, at rest on a calm sea (or on the beach).
+  if (buildings.boats.length) {
+    const boats = buildings.boats.map((b) => transform(buildings.boatGeometries[b.kind], mat4.multiply(
+      mat4.translation(b.x, b.beached ? field.heightAt(b.x, b.z) + 0.25 : -0.05, b.z), mat4.rotationAxis([0, 1, 0], b.angle))));
+    layers.push({ name: "boats", geometry: merge(...boats) });
   }
   layers.push({ name: "plants", geometry: buildScenery(props, field, climate, random).geometry });
   return layers;

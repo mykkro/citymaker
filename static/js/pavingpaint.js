@@ -103,6 +103,14 @@ export function paintPaving(settlement, climate, size, ppm, random) {
   }
 
   for (const square of settlement.squares) paintSquare(c, k, square, p, shade);
+
+  // Harbour: breakwaters and quays, paved in big slabs with a dark edge course.
+  for (const mole of settlement.harbour?.moles ?? []) {
+    stroke(mole.points, mole.width, shade(p.stones[1], 0.75));
+    stroke(mole.points, mole.width - 0.9, p.stones[0]);
+    kind(mole.points, mole.width, [0, 0, 1]);
+  }
+  for (const q of settlement.harbour?.quays ?? []) paintQuay(c, k, q, p, shade);
   return { color, kinds, ppm };
 }
 
@@ -142,6 +150,39 @@ function paintField(c, k, { centre: [cx, cz], size: [w, d], angle, crop }, p, gr
   k.fillStyle = css([1, 0, 0]); // dirt detail up close
   k.fillRect(-w / 2 - 0.4, -d / 2 - 0.4, w + 0.8, d + 0.8);
   k.restore();
+}
+
+// A quay: big slabs in rows along the water, a dark edge course at the water's edge.
+function paintQuay(c, k, { centre: [cx, cz], size: [length, depth], angle }, p, shade) {
+  const frame = (ctx) => {
+    ctx.save();
+    ctx.translate(cx, cz);
+    ctx.rotate(-angle); // canvas x along the quay, canvas y out to sea
+  };
+  frame(k);
+  k.fillStyle = css([0, 0, 1]);
+  k.fillRect(-length / 2, -depth / 2 - 5, length, depth + 5);
+  k.restore();
+  frame(c);
+  c.fillStyle = css(p.stones[0]);
+  c.fillRect(-length / 2, -depth / 2 - 2, length, depth + 2);
+  c.strokeStyle = css(p.mortar);
+  c.lineWidth = 0.08;
+  for (let y = -depth / 2 - 2 + 1.2; y < depth / 2; y += 1.2) {
+    c.beginPath();
+    c.moveTo(-length / 2, y);
+    c.lineTo(length / 2, y);
+    c.stroke();
+    for (let x = -length / 2 + ((Math.round(y / 1.2) % 2) ? 0.9 : 0); x < length / 2; x += 1.8) {
+      c.beginPath();
+      c.moveTo(x, y - 1.2);
+      c.lineTo(x, y);
+      c.stroke();
+    }
+  }
+  c.fillStyle = css(shade(p.stones[1], 0.7));
+  c.fillRect(-length / 2, depth / 2 - 0.7, length, 0.7);
+  c.restore();
 }
 
 // A square: paving with a dark border, a fine inner band, diagonal tiles and a compass rose.
