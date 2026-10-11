@@ -1,7 +1,7 @@
 // Generation options: what the editor lets you choose, their defaults, and how
 // they map to the generators' numbers.
 
-import { ARCHITECTURE_IDS } from "./architecture.js";
+import { ARCHITECTURE_IDS, TEMPLE_IDS } from "./architecture.js";
 
 export const SIZES = {
   // tiles along each map edge (4 m each), the island's typical radius, and grid cells per
@@ -17,8 +17,9 @@ export const SIZES = {
 export const CLIMATE_IDS = ["mild", "forest", "mediterranean", "tropical", "savanna", "desert", "tundra"];
 export const SETTLEMENT_IDS = ["none", "hamlet", "village", "town", "city", "metropolis"];
 // What the urban planner may build besides houses.
-export const FEATURE_IDS = ["church", "mill", "wells", "market", "farms", "walls", "harbour"];
+export const FEATURE_IDS = ["church", "mill", "wells", "market", "farms", "walls", "harbour", "signs"];
 export const ARCHITECTURE_CHOICES = ["auto", ...ARCHITECTURE_IDS];
+export const TEMPLE_CHOICES = ["auto", ...TEMPLE_IDS];
 
 export const DEFAULT_OPTIONS = {
   seed: 1,
@@ -32,6 +33,7 @@ export const DEFAULT_OPTIONS = {
   climate: "mild",
   settlement: "village",
   architecture: "auto", // "auto" follows the climate
+  temple: "auto",       // "auto" follows the architecture
   density: 0.5,         // how many houses: 0 = a few, 1 = packed
   height: 0.3,          // 0 = low, 1 = tall (more storeys)
   variety: 0.5,         // 0 = plain boxes, 1 = L and T shapes, uneven heights
@@ -57,6 +59,7 @@ export function normalizeOptions(options = {}) {
     climate: pick("climate", (v) => CLIMATE_IDS.includes(v)),
     settlement: pick("settlement", (v) => SETTLEMENT_IDS.includes(v)),
     architecture: pick("architecture", (v) => ARCHITECTURE_CHOICES.includes(v)),
+    temple: pick("temple", (v) => TEMPLE_CHOICES.includes(v)),
     density: clamp01(pick("density", unit)),
     height: clamp01(pick("height", unit)),
     variety: clamp01(pick("variety", unit)),
@@ -102,6 +105,7 @@ export function optionsToQuery(given) {
     climate: options.climate,
     town: options.settlement,
     arch: options.architecture,
+    temple: options.temple,
     bdens: Math.round(options.density * 100),
     bheight: Math.round(options.height * 100),
     bvar: Math.round(options.variety * 100),
@@ -123,6 +127,7 @@ export function optionsFromQuery(params) {
     climate: params.get("climate") ?? undefined,
     settlement: params.get("town") ?? undefined,
     architecture: params.get("arch") ?? undefined,
+    temple: params.get("temple") ?? undefined,
     density: percent("bdens"),
     height: percent("bheight"),
     variety: percent("bvar"),

@@ -52,3 +52,16 @@ test("clampToBounds keeps the whole circle inside the map", () => {
   clampToBounds(b, 64);
   assert.deepEqual([b.x, b.z], [0.5, 63.5]);
 });
+
+test("a fence of line obstacles cannot be walked through, even with thousands of obstacles", async () => {
+  const { lineObstacles } = await import("../../static/js/collision.js");
+  const fence = lineObstacles([[0, 0], [0, 40]], 0.2);
+  const clutter = Array.from({ length: 2000 }, (_, i) => ({ x: 100 + (i % 40) * 3, z: Math.floor(i / 40) * 3, radius: 0.5 }));
+  const obstacles = [...fence, ...clutter];
+  const body = { x: -1, z: 20, radius: 0.4, mass: 1 };
+  for (let step = 0; step < 200; step++) {
+    body.x += 0.05; // keeps pushing east, into the fence
+    resolveCollisions([body], obstacles);
+  }
+  assert.ok(body.x < 0, `the body got through to x = ${body.x}`);
+});

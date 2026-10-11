@@ -2,6 +2,7 @@
 // wooden palisade of sharpened logs with watchtowers and timber gates. The wall follows
 // the ground in short, level sections, stepping up and down hills.
 
+import { lineObstacles } from "../collision.js";
 import * as mat4 from "../mat4.js";
 import { box, cone, cylinder, merge, transform } from "../shapes.js";
 import { coneRoof, gableRoof, place, pyramid } from "./parts.js";
@@ -58,7 +59,7 @@ export function fortificationGeometry(wall, centre, field, style, random) {
         // A rail along the inside, holding the logs together.
         parts.push(place(box([0, 0, 0], [0.12, 0.15, length], DARK_LOG), mx, (y0 + y1) / 2 + 1.6, mz, yaw));
       }
-      obstacles.push({ x: mx, z: mz, radius: stone ? 1.1 : 0.45, static: true });
+      obstacles.push(...lineObstacles([[x0, z0], [x1, z1]], stone ? 0.85 : 0.3));
     }
   }
 

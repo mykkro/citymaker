@@ -318,7 +318,8 @@ test("a village gets a church, a windmill and houses, each on level ground off t
   assert.equal(count("mill"), 1);
   assert.ok(count("house") >= 8, `${count("house")} houses`);
   const onSquare = new Set(["well", "fountain", "stall"]); // these stand on the square on purpose
-  for (const b of settlement.buildings.filter((x) => !(onSquare.has(x.type) && x.floor === settlement.squares[0].height))) {
+  const posts = new Set(["signpost", "waymark", "noticeboard"]); // posts need no levelled plot
+  for (const b of settlement.buildings.filter((x) => !posts.has(x.type) && !(onSquare.has(x.type) && x.floor === settlement.squares[0].height))) {
     const front = [Math.sin(b.angle), Math.cos(b.angle)], side = [front[1], -front[0]];
     for (const [wx, wz, w, d] of b.wings) {
       for (const [fx, fz] of [[0, 0], [-0.45, -0.45], [0.45, -0.45], [-0.45, 0.45], [0.45, 0.45]]) {
@@ -409,4 +410,21 @@ test("a metropolis is bigger than a city, with more squares", () => {
   assert.ok(metropolis.squares.length > city.squares.length, `${metropolis.squares.length} vs ${city.squares.length} squares`);
   const houses = (s) => s.buildings.filter((b) => b.type === "house").length;
   assert.ok(houses(metropolis) > houses(city), `${houses(metropolis)} vs ${houses(city)} houses`);
+});
+
+test("temples, signs: mosques in Arabic towns, signposts at junctions pointing down the roads", () => {
+  const arabic = generateWorld({ seed: 9, size: "large", settlement: "town", climate: "desert" }).settlement;
+  assert.equal(arabic.architecture, "arabic");
+  assert.equal(arabic.buildings.find((b) => b.type === "church").temple, "mosque");
+  assert.ok(!arabic.buildings.some((b) => b.type === "shrine"), "no wayside crosses by a mosque");
+  const chosen = generateWorld({ seed: 9, size: "large", settlement: "town", climate: "desert", temple: "spire" }).settlement;
+  assert.equal(chosen.buildings.find((b) => b.type === "church").temple, "spire");
+
+  const { settlement } = generateWorld({ seed: 7, size: "large", settlement: "village" });
+  const signposts = settlement.buildings.filter((b) => b.type === "signpost");
+  assert.ok(signposts.length >= 1, "a signpost");
+  for (const sign of signposts) assert.ok(sign.arrows.length >= 2, "pointing at least two ways");
+  assert.ok(settlement.buildings.some((b) => b.type === "noticeboard"), "a notice board");
+  const none = generateWorld({ seed: 7, size: "large", settlement: "village", features: ["church"] }).settlement;
+  assert.ok(!none.buildings.some((b) => ["signpost", "waymark", "noticeboard"].includes(b.type)));
 });

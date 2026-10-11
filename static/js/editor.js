@@ -1,7 +1,7 @@
 // The editor panel: generation options, Generate, Explore, export/import and view settings.
 // It only reads and fills the form; main.js does the work through `handlers`.
 
-import { ARCHITECTURE_CHOICES, CLIMATE_IDS, FEATURE_IDS, MAX_SEED, normalizeOptions, SETTLEMENT_IDS, SIZES } from "./world/options.js";
+import { ARCHITECTURE_CHOICES, CLIMATE_IDS, FEATURE_IDS, MAX_SEED, normalizeOptions, SETTLEMENT_IDS, SIZES, TEMPLE_CHOICES } from "./world/options.js";
 
 const CLIMATE_ICONS = { mild: "🌳", forest: "🌲", mediterranean: "🫒", tropical: "🌴", savanna: "🦒", desert: "🌵", tundra: "❄️" };
 
@@ -22,12 +22,14 @@ export function createEditor(panel, handlers) {
   $("#opt-size").append(...Object.keys(SIZES).map((id) => radio("size", id, `size_${id}`)));
   $("#opt-climate").append(...CLIMATE_IDS.map((id) => radio("climate", id, `climate_${id}`, CLIMATE_ICONS[id])));
   $("#opt-settlement").append(...SETTLEMENT_IDS.map((id) => radio("settlement", id, `settlement_${id}`)));
-  $("#opt-architecture").append(...ARCHITECTURE_CHOICES.map((id) => {
+  const choices = (select, ids, prefix) => $(select).append(...ids.map((id) => {
     const option = document.createElement("option");
     option.value = id;
-    option.dataset.t = `architecture_${id}`;
+    option.dataset.t = `${prefix}_${id}`;
     return option;
   }));
+  choices("#opt-architecture", ARCHITECTURE_CHOICES, "architecture");
+  choices("#opt-temple", TEMPLE_CHOICES, "temple");
   $("#opt-features").append(...FEATURE_IDS.map((id) => {
     const option = document.createElement("label");
     option.className = "check";
@@ -43,6 +45,7 @@ export function createEditor(panel, handlers) {
       climate: data.get("climate"),
       settlement: data.get("settlement"),
       architecture: data.get("architecture"),
+      temple: data.get("temple"),
       features: data.getAll("features"),
       ...Object.fromEntries(sliders.map((key) => [key, Number(data.get(key)) / 100])),
     });
@@ -55,6 +58,7 @@ export function createEditor(panel, handlers) {
     form.elements.climate.value = options.climate;
     form.elements.settlement.value = options.settlement;
     form.elements.architecture.value = options.architecture;
+    form.elements.temple.value = options.temple;
     for (const box of form.querySelectorAll("[name=features]")) box.checked = options.features.includes(box.value);
   }
 

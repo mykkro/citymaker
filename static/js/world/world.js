@@ -20,7 +20,7 @@ const NO_SETTLEMENT = {
 };
 const BUILDING_TYPES = [
   "house", "church", "hall", "mill", "well", "fountain", "stall", "barn", "shed", "haystack", "shrine",
-  "lighthouse", "warehouse", "boathouse", "crane",
+  "lighthouse", "warehouse", "boathouse", "crane", "signpost", "waymark", "noticeboard",
 ];
 const BOAT_KINDS = ["rowboat", "fishing", "sailboat"];
 

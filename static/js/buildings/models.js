@@ -2,6 +2,7 @@
 // in the settlement's architecture style. Everything static is merged into one mesh;
 // windmill sails are a separate mesh that the renderer turns. Also returns collision circles.
 
+import { lineObstacles } from "../collision.js";
 import * as mat4 from "../mat4.js";
 import { box, cone, cylinder, ellipsoid, flatShade, merge, transform } from "../shapes.js";
 import { ARCHITECTURES } from "../world/architecture.js";
@@ -32,8 +33,9 @@ export function buildBuildings(settlement, field, climateId, random) {
   const style = { ...ARCHITECTURES[settlement.architecture ?? "cottage"], snow: climateId === "tundra" };
   const parts = [], mills = [], obstacles = [];
   const makers = {
-    house: style.hut ? hut : house, church, hall, mill, well, fountain, stall, barn, shed, haystack, shrine,
-    lighthouse, warehouse, boathouse, crane,
+    house: style.hut ? hut : house, church: (b, ...rest) => (b.temple === "mosque" ? mosque(b, ...rest) : church(b, ...rest)),
+    hall, mill, well, fountain, stall, barn, shed, haystack, shrine,
+    lighthouse, warehouse, boathouse, crane, signpost, waymark, noticeboard,
   };
   for (const b of settlement.buildings ?? []) {
     const make = makers[b.type];
@@ -47,7 +49,10 @@ export function buildBuildings(settlement, field, climateId, random) {
       mills.push({ x, y, z, yaw: b.angle, phase: random() * Math.PI });
     }
   }
-  for (const fence of settlement.fences ?? []) parts.push(fenceGeometry(fence, field, style, random));
+  for (const fence of settlement.fences ?? []) {
+    parts.push(fenceGeometry(fence, field, style, random));
+    obstacles.push(...lineObstacles(fence.points, fence.type === "wall" ? 0.35 : 0.2));
+  }
   if (settlement.fortifications) {
     const wall = fortificationGeometry(settlement.fortifications, settlement.centre, field, style, random);
     parts.push(wall.geometry);
@@ -86,6 +91,7 @@ function house(b, style, random) {
     parts.push(box([wx, eave / 2, wz], [w, eave, d], walls));
     if (flat) {
       parts.push(place(flatRoof({ width: w, depth: d, color: walls.map((c) => c * 0.97), beams: style.roof === "flat" ? style.timber : null }), wx, eave, wz));
+      if (style.merlons) parts.push(place(merlons(w, d, walls.map((c) => c * 0.97)), wx, eave + 0.6, wz));
     } else {
       const along = w >= d; // the ridge runs along the wing's longer side
       parts.push(place(gableRoof({
@@ -111,7 +117,12 @@ function house(b, style, random) {
         const [px, pz] = [face.x + face.tangent[0] * offset + face.normal[0] * proud, face.z + face.tangent[1] * offset + face.normal[1] * proud];
         for (let storey = 0; storey < wingStoreys; storey++) {
           if (storey === 0 && s === doorSlot) {
-            parts.push(place(door({ width: 1, height: 2, frame: trim, leaf: style.door ?? LEAF }), px, BASE - 0.3, pz, face.yaw));
+            parts.push(place(door({ width: 1, height: 2, frame: trim, leaf: style.door ?? LEAF, arched: style.arches }), px, BASE - 0.3, pz, face.yaw));
+          } else if (style.arches) {
+            // Small arched windows; some behind a wooden lattice.
+            const y = BASE + storey * STOREY + 1.3;
+            parts.push(place(window({ width: 0.7, height: 0.9, frame: trim, sill: style.stone, style: "arched" }), px, y, pz, face.yaw));
+            if (shutters) parts.push(place(box([0, -0.05, 0.12], [0.9, 0.95, 0.12], shutters), px, y, pz, face.yaw));
           } else {
             parts.push(place(window({ width: 0.8, height: 0.95, frame: trim, sill: style.stone, shutters }), px, BASE + storey * STOREY + 1.45, pz, face.yaw));
           }
@@ -137,6 +148,18 @@ function house(b, style, random) {
 }
 
 // Horizontal logs across a wall facing +z, `length` wide, sticking out past the corners.
+// Stepped crenellations round the edge of a flat roof, `w` x `d`, standing on y = 0.
+function merlons(w, d, color) {
+  const parts = [];
+  const edges = [[w, true, d / 2 - 0.1], [w, true, -d / 2 + 0.1], [d, false, w / 2 - 0.1], [d, false, -w / 2 + 0.1]];
+  for (const [length, alongX, fixed] of edges) {
+    for (let t = -length / 2 + 0.3; t <= length / 2 - 0.2; t += 0.8) {
+      parts.push(alongX ? box([t, 0.18, fixed], [0.4, 0.36, 0.22], color) : box([fixed, 0.18, t], [0.22, 0.36, 0.4], color));
+    }
+  }
+  return merge(...parts);
+}
+
 function logCourses(length, height, color) {
   const dark = color.map((c) => c * 0.82);
   const parts = [];
@@ -177,7 +200,7 @@ function faces(x, z, w, d) {
 // the nave gets a flat roof and a blue dome. Front toward +z.
 function church(b, style) {
   const [w, d] = b.size;
-  const kind = style.church;
+  const kind = b.temple ?? style.church;
   const walls = kind === "spire" ? style.stone : style.walls[0];
   const roofColor = style.snow ? SNOW : style.roof === "tile" && kind !== "spire" ? style.roofColor : kind === "spire" ? SLATE : walls.map((c) => c * 0.85);
   const t = w * 0.62;                       // tower width
@@ -201,8 +224,8 @@ function church(b, style) {
     // Flat nave roof, a drum and a blue dome over its middle, a small blue dome on the tower.
     parts.push(place(flatRoof({ width: w, depth: naveLength, color: walls }), 0, eave, naveZ));
     parts.push(cylinder([0, eave + 1.6, naveZ], w * 0.36, 1.6, walls, 12));
-    parts.push(flatShade(ellipsoid([0, eave + 1.6, naveZ], [w * 0.38, w * 0.36, w * 0.38], DOME_BLUE, 6, 12)));
-    parts.push(flatShade(ellipsoid([0, towerHeight, d / 2 - t / 2], [t * 0.42, t * 0.45, t * 0.42], DOME_BLUE, 5, 10)));
+    parts.push(flatShade(ellipsoid([0, eave + 1.6, naveZ], [w * 0.38, w * 0.36, w * 0.38], style.dome ?? DOME_BLUE, 6, 12)));
+    parts.push(flatShade(ellipsoid([0, towerHeight, d / 2 - t / 2], [t * 0.42, t * 0.45, t * 0.42], style.dome ?? DOME_BLUE, 5, 10)));
     parts.push(place(cross(frame), 0, towerHeight + t * 0.42, d / 2 - t / 2));
     parts.push(place(cross(frame), 0, eave + 1.6 + w * 0.34, naveZ));
   } else {
@@ -222,6 +245,60 @@ function church(b, style) {
     const z = -d / 2 + 1.6 + ((i + 0.5) * (naveLength - 2)) / bays;
     for (const side of [1, -1]) parts.push(place(window({ width: 0.9, height: 2, frame, style: "arched" }), side * w / 2, eave * 0.45, z, side * Math.PI / 2));
   }
+  return merge(...parts);
+}
+
+// ---------- Mosque ----------
+
+// A prayer hall under a big dome on a drum, a tall arched portal at the front flanked by two
+// small domes, arched windows, and a minaret with a balcony at a back corner. Front toward +z.
+function mosque(b, style) {
+  const [w, d] = b.size;
+  const walls = style.walls[0];
+  const domeColor = style.dome ?? DOME_BLUE;
+  const frame = style.trim;
+  const gold = [0.8, 0.68, 0.3];
+  const eave = 4.5 + w * 0.15;
+  const r = Math.min(w, d) * 0.4;
+  const domeZ = -d * 0.08;
+  const parts = [
+    place(plinth(w, d, style.stone), 0, 0, 0),
+    box([0, eave / 2, 0], [w, eave, d], walls),
+    place(flatRoof({ width: w, depth: d, color: walls }), 0, eave, 0),
+    // The dome on its drum, over the middle of the hall, with a gilded finial.
+    cylinder([0, eave + 1.5, domeZ], r, 1.5, walls, 16),
+    flatShade(ellipsoid([0, eave + 1.5, domeZ], [r, r * 1.1, r], domeColor, 7, 16)),
+    cylinder([0, eave + 1.5 + r * 1.1 + 0.9, domeZ], 0.05, 1, gold, 6),
+    flatShade(ellipsoid([0, eave + 1.5 + r * 1.1 + 0.15, domeZ], [0.15, 0.15, 0.15], gold, 4, 6)),
+    // The portal: a tall frame round an arched doorway.
+    box([0, (eave + 1.4) / 2, d / 2 + 0.25], [3.6, eave + 1.4, 0.6], walls.map((c) => c * 0.96)),
+    box([0, eave + 1.5, d / 2 + 0.25], [3.8, 0.2, 0.7], style.stone),
+    place(door({ width: 1.8, height: 2.8, frame, leaf: style.door ?? LEAF, arched: true }), 0, -0.05, d / 2 + 0.55),
+    place(window({ width: 1.2, height: 0.8, frame, style: "arched" }), 0, 4.4, d / 2 + 0.55),
+  ];
+  if (style.merlons) parts.push(place(merlons(w, d, walls), 0, eave + 0.6, 0));
+  for (const side of [-1, 1]) {
+    parts.push(cylinder([side * (w / 2 - 1.4), eave + 0.6, d / 2 - 1.4], 0.9, 0.6, walls, 10));
+    parts.push(flatShade(ellipsoid([side * (w / 2 - 1.4), eave + 0.6, d / 2 - 1.4], [0.9, 0.95, 0.9], domeColor, 5, 10)));
+  }
+  const bays = Math.max(2, Math.floor(d / 3));
+  for (let i = 0; i < bays; i++) {
+    const z = -d / 2 + ((i + 0.5) * d) / bays;
+    for (const side of [1, -1]) parts.push(place(window({ width: 0.9, height: 1.6, frame, style: "arched" }), side * w / 2, eave * 0.45, z, side * Math.PI / 2));
+  }
+  // The minaret, at a back corner: shaft, balcony with a railing, upper shaft, pointed cap.
+  const mx = -(w / 2 - 1.2), mz = -(d / 2 - 1.2);
+  const height = eave * 2.7;
+  parts.push(place(frustum({ r0: 1.15, r1: 0.95, y0: -0.3, y1: height, color: walls, sides: 8 }), mx, 0, mz, Math.PI / 8));
+  parts.push(cylinder([mx, height + 0.25, mz], 1.4, 0.3, style.stone, 12));
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    parts.push(box([mx + Math.cos(a) * 1.3, height + 0.6, mz + Math.sin(a) * 1.3], [0.08, 0.6, 0.08], frame));
+  }
+  parts.push(place(frustum({ r0: 0.7, r1: 0.65, y0: height, y1: height + 2.6, color: walls, sides: 8 }), mx, 0, mz, Math.PI / 8));
+  parts.push(place(coneRoof({ radius: 0.85, height: 2.2, color: domeColor, sides: 8 }), mx, height + 2.55, mz));
+  parts.push(cylinder([mx, height + 5.4, mz], 0.04, 0.8, gold, 6));
+  for (const y of [height * 0.35, height * 0.7]) parts.push(place(window({ width: 0.4, height: 0.9, frame, style: "arched" }), mx, y, mz + 1.05));
   return merge(...parts);
 }
 
@@ -255,7 +332,7 @@ function hall(b, style, random) {
   const rise = flat ? 0.5 : (d / 2) * Math.tan(Math.min(style.pitch, 0.6));
   const top = height + rise + 3.2;
   parts.push(box([0, height + (rise + 3.2) / 2, 0], [2.4, rise + 3.2, 2.4], walls));
-  parts.push(place(pyramid({ size: 2.7, height: 2.4, color: style.snow ? SNOW : flat ? DOME_BLUE : style.roof === "thatch" ? SLATE : roof.color }), 0, top, 0));
+  parts.push(place(pyramid({ size: 2.7, height: 2.4, color: style.snow ? SNOW : flat ? style.dome ?? DOME_BLUE : style.roof === "thatch" ? SLATE : roof.color }), 0, top, 0));
   for (const [yaw, nx, nz] of [[0, 0, 1], [Math.PI, 0, -1]]) {
     const face = mat4.multiply(mat4.translation(nx * 1.22, top - 1.4, nz * 1.22), mat4.multiply(mat4.rotationAxis(Y_AXIS, yaw), mat4.rotationAxis(X_AXIS, Math.PI / 2)));
     parts.push(transform(cylinder([0, 0.05, 0], 0.75, 0.1, [0.95, 0.94, 0.88], 12), face));
@@ -490,6 +567,59 @@ function crane() {
   );
 }
 
+// ---------- Signs ----------
+
+const SIGN_BOARD = [0.93, 0.89, 0.76], SIGN_EDGE = [0.3, 0.22, 0.15], MARK = [0.78, 0.2, 0.16];
+
+// An arrow board pointing along +z: a plank with a pointed end (a diamond half buried in it).
+function arrowBoard(length, height, color) {
+  return merge(
+    box([0, 0, 0.1 + length / 2], [0.05, height, length], color),
+    transform(box([0, 0, 0], [0.05, height * 0.72, height * 0.72], color), mat4.multiply(mat4.translation(0, 0, 0.1 + length), mat4.rotationAxis(X_AXIS, Math.PI / 4))),
+    box([0.03, height / 2 - 0.02, 0.1 + length / 2], [0.02, 0.03, length], SIGN_EDGE),
+    box([0.03, -height / 2 + 0.02, 0.1 + length / 2], [0.02, 0.03, length], SIGN_EDGE),
+  );
+}
+
+// A fingerpost: a post with an arrow (as yet unlettered) for each way out of the junction.
+// b.arrows are world headings.
+function signpost(b) {
+  const parts = [
+    box([0, 1.25, 0], [0.13, 2.5, 0.13], WOOD),
+    place(pyramid({ size: 0.2, height: 0.18, color: DARK_WOOD }), 0, 2.5, 0),
+  ];
+  (b.arrows ?? []).forEach((heading, i) => {
+    parts.push(place(arrowBoard(0.85, 0.2, SIGN_BOARD), 0, 2.2 - i * 0.28, 0, heading - b.angle));
+  });
+  return merge(...parts);
+}
+
+// A waymark: a short stake with one painted arrow, where a footpath leaves the road.
+function waymark(b) {
+  return merge(
+    box([0, 0.55, 0], [0.09, 1.1, 0.09], WOOD),
+    place(arrowBoard(0.35, 0.14, MARK), 0, 0.95, 0, (b.arrows?.[0] ?? 0) - b.angle),
+  );
+}
+
+// A notice board: two posts, a framed board with papers pinned to it, and a little roof.
+function noticeboard(b, style, random) {
+  const roof = roofOf(style, random);
+  const parts = [
+    box([-0.75, 0.95, 0], [0.1, 1.9, 0.1], WOOD),
+    box([0.75, 0.95, 0], [0.1, 1.9, 0.1], WOOD),
+    box([0, 1.35, 0], [1.6, 1, 0.06], DARK_WOOD),
+    box([0, 1.35, 0.02], [1.45, 0.86, 0.04], [0.62, 0.48, 0.34]),
+    place(gableRoof({ length: 1.9, span: 0.5, pitch: 0.6, material: roof.material === "thatch" ? "tile" : roof.material, color: roof.color, gableColor: WOOD }), 0, 1.95, 0),
+  ];
+  const papers = [[0.96, 0.95, 0.9], [0.95, 0.9, 0.7], [0.88, 0.92, 0.95], [0.97, 0.85, 0.85]];
+  for (let i = 0; i < 5; i++) {
+    const w = 0.22 + random() * 0.15, h = 0.25 + random() * 0.15;
+    parts.push(box([-0.55 + i * 0.27, 1.25 + random() * 0.2, 0.05], [w, h, 0.01], papers[i % papers.length]));
+  }
+  return merge(...parts);
+}
+
 // ---------- Fences and walls ----------
 
 // Wooden post-and-rail fences, or dry-stone walls, following the ground in short pieces.
@@ -531,7 +661,7 @@ function fenceGeometry(fence, field, style, random) {
 // Circles covering each wing's rectangle (or the round hut / mill), in world coordinates.
 // Small things (stalls, haystacks, shrines) are left walkable.
 function footprintCircles(b) {
-  if (b.type === "stall" || b.type === "haystack" || b.type === "shrine" || b.type === "crane") return [];
+  if (["stall", "haystack", "shrine", "crane", "signpost", "waymark", "noticeboard"].includes(b.type)) return [];
   if (b.type === "lighthouse") return [{ x: b.centre[0], z: b.centre[1], radius: 1.6, static: true }];
   const front = [Math.sin(b.angle), Math.cos(b.angle)], side = [front[1], -front[0]];
   const toWorld = (x, z) => [b.centre[0] + side[0] * x + front[0] * z, b.centre[1] + side[1] * x + front[1] * z];

@@ -7,9 +7,10 @@ streets yourself. Export the result as JSON (to load it back later) or as a GLB
 3D model for Blender and other tools.
 
 Today it builds the landscape, the roads and squares, and the buildings of villages
-and small towns: houses in seven architecture styles, churches, town halls, market
+and small towns: houses in eight architecture styles, churches and mosques, town halls, market
 stalls, windmills, wells and fountains, farms with fields, fences, town walls with
-towers and gates, and harbours with jetties, quays, a lighthouse and boats. Bigger city buildings come next (see the [roadmap](#roadmap)).
+towers and gates, harbours with jetties, quays, a lighthouse and boats, and
+signposts and notice boards. Bigger city buildings come next (see the [roadmap](#roadmap)).
 
 Everything runs in the browser: plain JavaScript and raw WebGL2, with no
 libraries, no build step and no backend. Any static file server will do.
@@ -20,9 +21,11 @@ libraries, no build step and no backend. Any static file server will do.
 | --- | --- | --- |
 | ![Market stalls and a fountain on a cobbled square, a town hall with a clock tower behind](media/market.png) | ![White flat-roofed houses with blue shutters, a blue-domed church and a town hall](media/town.png) | ![Red and ochre wooden houses under snowy roofs inside a log palisade](media/nordic.png) |
 
-| A harbour | A metropolis | Cliffs, bays and a peak |
+| An Arabic town | A harbour | A metropolis |
 | --- | --- | --- |
-| ![A walled Mediterranean city's harbour: warehouses on a stone quay, jetties, a marina with sailboats, a breakwater and a lighthouse](media/harbour.png) | ![A walled metropolis on a giant island: a dense street grid with several squares, a harbour at the top](media/metropolis.png) | ![A savanna island ringed by cliffs, with a mountain, bays, rocky islets and a village of round huts](media/coast.png) |
+| ![A walled desert town of flat-roofed houses with crenellated parapets round a market square, a mosque with a green dome and a minaret](media/arabic.png) | ![A walled Mediterranean city's harbour: warehouses on a stone quay, jetties, a marina with sailboats, a breakwater and a lighthouse](media/harbour.png) | ![A walled metropolis on a giant island: a dense street grid with several squares, a harbour at the top](media/metropolis.png) |
+
+![A savanna island ringed by cliffs, with a mountain, bays, rocky islets and a village of round huts](media/coast.png)
 
 ## Features
 
@@ -88,6 +91,13 @@ libraries, no build step and no backend. Any static file server will do.
   | Farms & fields     | barns on the outskirts with haystacks and a field behind: wheat, furrows, vegetables, lavender, vines or millet |
   | Town walls         | stone walls with battlements, round towers and gatehouses round a town; a log palisade with watchtowers round a village. Houses stay inside, and the wall opens toward the harbour |
   | Harbour & boats    | see below |
+  | Signposts & notice boards | fingerposts at road junctions with an arrow (still unlettered) down each road, red waymarks where footpaths leave the roads, notice boards with pinned papers near the square |
+
+  The **Temple** setting picks the church: by architecture, a church with a spire,
+  with a bell tower, a domed church, or a mosque (a domed prayer hall with an arched
+  portal and a minaret). Mediterranean towns build either a domed church or a mosque.
+
+  Fences, walls, palisades and town walls are solid: you can't walk through them.
 
   **Harbours** go on the best stretch of coast near the settlement: sheltered, not a
   cliff, with deep water close in, and a road leads down to them.
@@ -113,8 +123,9 @@ libraries, no build step and no backend. Any static file server will do.
   | Timber & thatch cottages   | whitewashed, many timber-framed, thick thatch, coloured shutters       | spire      | mild          |
   | Log houses                 | log walls with crossing corners, shingle roofs                         | spire      | forest        |
   | Nordic                     | falu red, ochre and white boarded houses, white trim, dark steep roofs | spire      | tundra        |
-  | Mediterranean (flat roofs) | white cubes with flat roofs and blue doors and shutters, some tiled    | blue dome  | mediterranean |
-  | Adobe                      | flat-roofed adobe with roof-beam ends                                  | bell tower | desert        |
+  | Mediterranean (flat roofs) | white cubes with flat roofs and blue doors and shutters, some tiled    | blue dome or mosque | mediterranean |
+  | Arabic (flat roofs)        | flat roofs with crenellated parapets, arched doors and windows, wooden lattices | mosque | desert |
+  | Adobe                      | flat-roofed adobe with roof-beam ends                                  | bell tower |               |
   | Tropical                   | timber under steep palm thatch                                         | bell tower | tropical      |
   | Round huts                 | round mud huts with cone roofs; raised round granaries                 | bell tower | savanna       |
 
@@ -168,11 +179,12 @@ don't load JavaScript modules from `file://` pages.
 | `islets`  | `islets=50`       | islets, from 0 (none) to 100 (many)                                            |
 | `climate` | `climate=savanna` | `mild`, `forest`, `mediterranean`, `tropical`, `savanna`, `desert` or `tundra` |
 | `town`    | `town=city`       | `none`, `hamlet`, `village`, `town`, `city` or `metropolis`                    |
-| `arch`    | `arch=nordic`     | `auto`, `cottage`, `log`, `nordic`, `mediterranean`, `adobe`, `tropical` or `huts` |
+| `arch`    | `arch=nordic`     | `auto`, `cottage`, `log`, `nordic`, `mediterranean`, `arabic`, `adobe`, `tropical` or `huts` |
+| `temple`  | `temple=mosque`   | `auto`, `spire`, `bell`, `dome` or `mosque`                                    |
 | `bdens`   | `bdens=80`        | building density, from 0 (scattered) to 100 (packed)                           |
 | `bheight` | `bheight=60`      | building height, from 0 (low) to 100 (tall)                                    |
 | `bvar`    | `bvar=90`         | house shapes, from 0 (plain) to 100 (varied)                                   |
-| `feat`    | `feat=church.mill.walls` | what may be built: `church`, `mill`, `wells`, `market`, `farms`, `walls`, `harbour` (all by default) |
+| `feat`    | `feat=church.mill.walls` | what may be built: `church`, `mill`, `wells`, `market`, `farms`, `walls`, `harbour`, `signs` (all by default) |
 | `time`    | `time=21`         | start at 21:00 (the day starts at 10:00 by default)                            |
 
 For example: `http://127.0.0.1:8000/?seed=4&size=large&hills=35&veg=60&climate=mediterranean&town=town`.
@@ -226,8 +238,8 @@ versions can save edits in the same file. A medium island is about 400 KB. The f
   "options": {
     "seed": 1, "size": "medium", "hilliness": 0.4, "vegetation": 0.5, "peaks": 0,
     "bays": 0.3, "cliffs": 0.25, "islets": 0.3, "climate": "mild", "settlement": "village",
-    "architecture": "auto", "density": 0.5, "height": 0.3, "variety": 0.5,
-    "features": ["church", "mill", "wells", "market", "farms", "walls", "harbour"]
+    "architecture": "auto", "temple": "auto", "density": 0.5, "height": 0.3, "variety": 0.5,
+    "features": ["church", "mill", "wells", "market", "farms", "walls", "harbour", "signs"]
   },
   "terrain": {
     "tiles": 32,          // tiles along each edge of the square map
@@ -245,7 +257,8 @@ versions can save edits in the same file. A medium island is about 400 KB. The f
     "architecture": "cottage",  // the style the buildings were made in
     "buildings": [{
       "type": "house",    // house, church, hall, mill, well, fountain, stall, barn, shed, haystack, shrine,
-                          // lighthouse, warehouse, boathouse or crane
+                          // lighthouse, warehouse, boathouse, crane, signpost, waymark or noticeboard;
+                          // a church has "temple" (spire, bell, dome, mosque), signs "arrows" (headings)
       "centre": [52.4, 61.9], "size": [8.1, 9.6], "angle": 2.31,  // bounding box; the front faces [sin(angle), cos(angle)]
       "floor": 2.18,      // height of the levelled ground it stands on
       "storeys": 1, "variant": 2, "roof": "gable",  // gable or flat
@@ -352,3 +365,7 @@ static/js/
 tests/js/           Node test suites
 media/              logo and screenshots
 ```
+
+## License
+
+[MIT](LICENSE)

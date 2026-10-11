@@ -12,16 +12,20 @@
 // hut         round huts with cone roofs instead of rectangular houses
 // stone       plinths, chimneys, wells, town walls
 // fence       "fence" or "wall" round the yards
-// church      "spire" | "dome" | "bell" (a low pyramid on the tower)
+// church      the temple: "spire" | "dome" | "bell" (a low pyramid on the tower) | "mosque";
+//             "dome" styles build a domed church or a mosque, by seed
+// dome        dome colour (domed churches, mosques)
+// arches      arched doors and windows; merlons  stepped crenellations on flat roofs
 // barn        barn wall colour
 // shutters    shutter colours (null entries mean none)
 // door        door colour, where it is not plain wood
 
-export const ARCHITECTURE_IDS = ["cottage", "log", "nordic", "mediterranean", "adobe", "tropical", "huts"];
+export const ARCHITECTURE_IDS = ["cottage", "log", "nordic", "mediterranean", "arabic", "adobe", "tropical", "huts"];
+export const TEMPLE_IDS = ["spire", "bell", "dome", "mosque"];
 
 export const CLIMATE_ARCHITECTURE = {
   mild: "cottage", forest: "log", mediterranean: "mediterranean", tropical: "tropical",
-  savanna: "huts", desert: "adobe", tundra: "nordic",
+  savanna: "huts", desert: "arabic", tundra: "nordic",
 };
 
 const GREEN = [0.25, 0.45, 0.3], BLUE = [0.25, 0.37, 0.56], RED = [0.58, 0.22, 0.18];
@@ -50,7 +54,15 @@ export const ARCHITECTURES = {
     walls: [[0.97, 0.96, 0.92], [0.96, 0.95, 0.9], [0.95, 0.88, 0.72]], trim: [0.15, 0.38, 0.68], timber: [0.35, 0.28, 0.2],
     roof: "tile", roofColor: [0.76, 0.39, 0.25], pitch: 0.4, flatShare: 0.7, timbered: 0, logs: false, cornerBoards: false,
     hut: false, stone: [0.88, 0.84, 0.75], fence: "wall", church: "dome", barn: [0.85, 0.8, 0.7], shutters: [BLUE, [0.15, 0.38, 0.68], GREEN, null],
-    door: [0.15, 0.38, 0.68],
+    door: [0.15, 0.38, 0.68], dome: [0.18, 0.4, 0.75],
+  },
+  // North African and Middle Eastern towns: flat roofs with crenellated parapets, arched doors
+  // and windows behind wooden lattices, a mosque with a dome and a minaret.
+  arabic: {
+    walls: [[0.93, 0.88, 0.78], [0.88, 0.78, 0.62], [0.95, 0.93, 0.88], [0.84, 0.7, 0.52]], trim: [0.38, 0.28, 0.2], timber: null,
+    roof: "flat", roofColor: [0.85, 0.76, 0.6], pitch: 0, flatShare: 1, timbered: 0, logs: false, cornerBoards: false,
+    hut: false, stone: [0.85, 0.77, 0.62], fence: "wall", church: "mosque", barn: [0.84, 0.72, 0.55], shutters: [[0.38, 0.28, 0.2], null, [0.3, 0.45, 0.5], null],
+    door: [0.24, 0.42, 0.48], dome: [0.3, 0.58, 0.55], arches: true, merlons: true,
   },
   // Desert: flat-roofed adobe with protruding roof beams.
   adobe: {

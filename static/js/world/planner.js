@@ -10,7 +10,9 @@
 // Buildings are plain data:
 //   { type, centre: [x, z], size: [width, depth], angle, floor, storeys, variant, wings, roof? }
 // type: house | church | hall | mill | well | fountain | stall | barn | shed | haystack | shrine,
-// and by the harbour lighthouse | warehouse | boathouse | crane.
+// by the harbour lighthouse | warehouse | boathouse | crane, and by the roads signpost (arrows:
+// headings its pointers show) | waymark (one arrow, where a footpath leaves a road) | noticeboard.
+// A church carries temple: spire | bell | dome | mosque.
 // size is the footprint's bounding box. angle turns the front (local +z) toward the road or
 // square: front = [sin(angle), cos(angle)]; local +x runs along the front, [cos(angle), -sin(angle)].
 // floor: the height of the levelled ground it stands on.
@@ -22,7 +24,7 @@
 //   towers: [[x, z], ...] } or null.
 
 import { createRandom } from "../random.js";
-import { ARCHITECTURES, resolveArchitecture } from "./architecture.js";
+import { ARCHITECTURES, resolveArchitecture, TEMPLE_IDS } from "./architecture.js";
 import { SEA_LEVEL } from "./heightmap.js";
 import { fbm } from "./noise.js";
 import { resample } from "./settlement.js";
@@ -56,6 +58,9 @@ export function planBuildings(field, settlement, sitePlan, options) {
   const style = ARCHITECTURES[architecture];
   const has = (feature) => options.features.includes(feature);
   const random = createRandom(options.seed * 3301 + 29);
+  // The temple: chosen, or the style's own ("dome" styles toss between a domed church and a mosque).
+  const temple = TEMPLE_IDS.includes(options.temple) ? options.temple
+    : style.church === "dome" ? (random() < 0.5 ? "mosque" : "dome") : style.church;
   const n = sitePlan.cellsPerSide, cell = sitePlan.cell;
   const taken = new Uint8Array(n * n); // footprints plus GAP, yards, fields, the wall
   const buildings = [], fences = [], fields = [];
@@ -156,7 +161,7 @@ export function planBuildings(field, settlement, sitePlan, options) {
         if (floor === null) continue;
         const yardSize = [size[0] + 5, size[1] + 5];
         const walled = fits(spot.centre, yardSize, spot.angle) !== null;
-        add({ type: "church", centre: spot.centre, size, angle: spot.angle, floor });
+        add({ type: "church", centre: spot.centre, size, angle: spot.angle, floor, temple });
         if (walled) {
           fences.push({ type: "wall", points: yard(spot.centre, yardSize, spot.angle, true) });
           take(spot.centre, yardSize, spot.angle, 0.8);
@@ -300,8 +305,8 @@ export function planBuildings(field, settlement, sitePlan, options) {
     }
   }
 
-  // Wayside shrines on the roads out of town.
-  if (has("church")) {
+  // Wayside shrines on the roads out of town (not where the temple is a mosque).
+  if (has("church") && temple !== "mosque") {
     let shrines = settlement.level === "hamlet" ? 1 : 2;
     const roadsOut = frontages.filter((f) => f.road.type !== "street" && f.d > settlement.radius * 1.1 && f.d < settlement.radius * 1.8);
     for (let tries = 0; shrines > 0 && tries < 200 && roadsOut.length; tries++) {
@@ -315,12 +320,96 @@ export function planBuildings(field, settlement, sitePlan, options) {
     }
   }
 
+  if (has("signs")) planSigns(settlement, sitePlan, fits, add, near, facing, random);
+
   return { architecture, buildings, fences, fields, fortifications };
+}
+
+// Signposts where roads meet (fewest in the middle of town, where everyone knows the way),
+// waymarks where footpaths leave the roads, and notice boards by the squares.
+function planSigns(settlement, sitePlan, fits, add, near, facing, random) {
+  const [cx, cz] = settlement.centre;
+  const lines = settlement.roads.map((road) => ({ road, points: resample(road.points, 1) }));
+  // Headings away from (x, z) along every road passing within reach of it.
+  const headings = (x, z) => {
+    const out = [];
+    for (const { road, points } of lines) {
+      let best = -1, bestD = Infinity;
+      points.forEach(([px, pz], i) => {
+        const d = Math.hypot(px - x, pz - z);
+        if (d < bestD) [best, bestD] = [i, d];
+      });
+      if (bestD > road.width / 2 + 1.5) continue;
+      for (const j of [best + 5, best - 5]) {
+        if (j < 0 || j >= points.length) continue;
+        const h = Math.atan2(points[j][0] - x, points[j][1] - z);
+        if (out.every((o) => Math.abs(Math.atan2(Math.sin(h - o), Math.cos(h - o))) > 0.6)) out.push(h);
+      }
+    }
+    return out;
+  };
+  // A free spot just off the paving round (x, z), for something `size` across.
+  const beside = (x, z, reach, size) => {
+    for (let k = 0; k < 12; k++) {
+      const a = (k / 12) * Math.PI * 2 + 0.3;
+      const centre = [x + Math.sin(a) * reach, z + Math.cos(a) * reach];
+      const floor = fits(centre, [size, size], a, { outside: true });
+      if (floor !== null) return { centre, floor };
+    }
+    return null;
+  };
+
+  // Junctions: where a road's end meets another road (not on a square).
+  const junctions = [];
+  for (const { road } of lines) {
+    for (const end of [road.points[0], road.points.at(-1)]) {
+      if (sitePlan.useAt(end[0], end[1]) === USE.square) continue;
+      const touching = lines.some((l) => l.road !== road && l.points.some(([px, pz]) => Math.hypot(px - end[0], pz - end[1]) < l.road.width / 2 + 1));
+      if (!touching) continue;
+      const d = Math.hypot(end[0] - cx, end[1] - cz);
+      junctions.push({ x: end[0], z: end[1], width: road.width, d, order: d < settlement.radius * 0.6 ? 1 + random() : random() });
+    }
+  }
+  junctions.sort((a, b) => a.order - b.order);
+  const max = { hamlet: 1, village: 3, town: 5, city: 7, metropolis: 10 }[settlement.level] ?? 2;
+  const placed = [];
+  for (const j of junctions) {
+    if (placed.length >= max) break;
+    if (placed.some((p) => Math.hypot(p[0] - j.x, p[1] - j.z) < 25)) continue;
+    const arrows = headings(j.x, j.z);
+    if (arrows.length < 2) continue;
+    const spot = beside(j.x, j.z, j.width / 2 + 1.6, 0.8);
+    if (!spot) continue;
+    add({ type: "signpost", centre: spot.centre, size: [0.8, 0.8], angle: 0, floor: spot.floor, arrows: arrows.map(round3) }, 0.5);
+    placed.push([j.x, j.z]);
+  }
+
+  // Waymarks at the start of each footpath.
+  for (const { road, points } of lines) {
+    if (road.type !== "path" || points.length < 6) continue;
+    const [x, z] = points[0];
+    const spot = beside(x, z, road.width / 2 + 0.9, 0.5);
+    if (!spot) continue;
+    const heading = Math.atan2(points[5][0] - x, points[5][1] - z);
+    add({ type: "waymark", centre: spot.centre, size: [0.5, 0.5], angle: 0, floor: spot.floor, arrows: [round3(heading)] }, 0.3);
+  }
+
+  // Notice boards facing the street, near the square: one in a village, more in bigger towns.
+  let boards = { hamlet: 1, village: 1, town: 2, city: 3, metropolis: 4 }[settlement.level] ?? 1;
+  for (const f of near) {
+    if (boards <= 0) break;
+    if (random() > 0.3) continue;
+    const { centre, angle } = facing(f, 0.6, 0.5);
+    const floor = fits(centre, [1.8, 0.6], angle);
+    if (floor === null) continue;
+    add({ type: "noticeboard", centre, size: [1.8, 0.6], angle, floor }, 6);
+    boards--;
+  }
 }
 
 // Levels the ground under each building (and a little around it) to its floor height.
 // Things standing on squares, quays and the breakwater are left alone (they are level already).
-const ON_PAVING = new Set(["stall", "fountain", "lighthouse", "warehouse", "crane"]);
+const ON_PAVING = new Set(["stall", "fountain", "lighthouse", "warehouse", "crane", "signpost", "waymark", "noticeboard"]); // and posts need no plot
 export function gradeBuildings(terrain, field, buildings) {
   const n = field.verticesPerSide, cell = field.cell;
   for (const b of buildings) {
