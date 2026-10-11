@@ -1,0 +1,679 @@
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #111;
+  overflow: hidden;
+}
+
+#game {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+}
+
+#hud {
+  position: fixed;
+  bottom: 8px;
+  left: 8px;
+  font: 12px monospace;
+  color: #fff;
+  text-shadow: 0 1px 2px #000;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+#lang {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(20, 30, 20, 0.55);
+}
+
+#lang button {
+  display: block;
+  width: 36px;
+  height: 26px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  overflow: hidden;
+  background: none;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity 0.15s, border-color 0.15s;
+}
+
+#lang button svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+#lang button:hover,
+#lang button:focus-visible {
+  opacity: 0.85;
+}
+
+#lang button[aria-pressed="true"] {
+  opacity: 1;
+  border-color: #fff;
+}
+
+/* ---- Touch controls ---- */
+
+html, body, #game {
+  touch-action: none;           /* no browser pan/zoom gestures over the game */
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#stick {
+  position: fixed;
+  width: 112px;
+  height: 112px;
+  margin: -56px 0 0 -56px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  pointer-events: none;
+}
+
+#stick .knob {
+  position: absolute;
+  left: 32px;
+  top: 32px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.touch-button {
+  position: fixed;
+  display: none;
+  width: 64px;
+  height: 64px;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  border-radius: 50%;
+  background: rgba(20, 30, 20, 0.55);
+  color: #fff;
+  font-size: 28px;
+  line-height: 1;
+  touch-action: manipulation;
+}
+
+body.touch .touch-button {
+  display: block;
+}
+
+#time-button {
+  right: calc(20px + env(safe-area-inset-right));
+  bottom: calc(28px + env(safe-area-inset-bottom));
+  width: 52px;
+  height: 52px;
+  font-size: 22px;
+}
+
+#time-button.active {
+  background: rgba(210, 160, 40, 0.8);
+}
+
+body.touch #hud {
+  bottom: auto;
+  top: calc(64px + env(safe-area-inset-top));
+  left: calc(12px + env(safe-area-inset-left));
+  max-width: 60vw;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(20, 30, 20, 0.55);
+  animation: fade-help 10s forwards;
+}
+
+@keyframes fade-help {
+  80% { opacity: 1; }
+  100% { opacity: 0; visibility: hidden; }
+}
+
+#lang {
+  top: calc(12px + env(safe-area-inset-top));
+  right: calc(12px + env(safe-area-inset-right));
+}
+
+/* ---- Start screen: avatar choice ---- */
+
+#start {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(10, 30, 40, 0.45);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  z-index: 5;
+}
+
+#lang {
+  z-index: 10; /* the language can be switched over the dialogs too */
+}
+
+#start .panel {
+  max-width: 760px;
+  padding: 20px 24px;
+  border-radius: 18px;
+  background: rgba(255, 252, 245, 0.95);
+  color: #2b2418;
+  text-align: center;
+  font: 16px system-ui, sans-serif;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+}
+
+.logo-word {
+  font-family: "Fredoka", "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 46px;
+  stroke: #3b2a1a;
+  stroke-width: 7px;
+  stroke-linejoin: round;
+  paint-order: stroke;
+  letter-spacing: 0.5px;
+}
+
+.logo-city {
+  fill: #e5603b;
+}
+
+.logo-maker {
+  fill: #2aa3b8;
+}
+
+#start h2 {
+  margin: 0 0 14px;
+  font-size: 22px;
+}
+
+#start .cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+#start .card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 8px 10px;
+  border: 3px solid transparent;
+  border-radius: 14px;
+  background: linear-gradient(#bfe3f5, #e9f6e3);
+  color: inherit;
+  font: 600 16px system-ui, sans-serif;
+  cursor: pointer;
+  transition: transform 0.12s, border-color 0.12s;
+  touch-action: manipulation;
+}
+
+#start .card:hover,
+#start .card:focus-visible {
+  transform: translateY(-3px);
+  border-color: #d9a02a;
+  outline: none;
+}
+
+#start .card canvas {
+  width: 140px;
+  height: 140px;
+  max-width: 100%;
+  aspect-ratio: 1;
+}
+
+#start .card .key {
+  position: absolute;
+  top: 6px;
+  left: 8px;
+  font-size: 12px;
+  opacity: 0.5;
+}
+
+body.touch #start .card .key {
+  display: none;
+}
+
+#start .note {
+  margin: 14px 0 0;
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+#start .cancel {
+  margin-top: 12px;
+  padding: 8px 22px;
+  border: 2px solid #c9bda4;
+  border-radius: 999px;
+  background: none;
+  color: inherit;
+  font: 600 15px system-ui, sans-serif;
+  cursor: pointer;
+}
+
+@media (max-width: 640px), (max-height: 420px) {
+  #start .panel {
+    padding: 14px;
+  }
+  #start h2 {
+    font-size: 18px;
+    margin-bottom: 10px;
+  }
+  #start .card canvas {
+    width: 96px;
+    height: 96px;
+  }
+}
+
+@media (max-width: 480px) {
+  #start .cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ---- Pills: clock, back to the editor, show the panel ---- */
+
+.pill {
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top));
+  padding: 6px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(20, 30, 20, 0.55);
+  color: #fff;
+  font: 600 17px system-ui, sans-serif;
+  text-shadow: 0 1px 2px #000;
+}
+
+button.pill {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+button.pill:hover,
+button.pill:focus-visible {
+  background: rgba(20, 30, 20, 0.75);
+}
+
+#clock {
+  left: 50%;
+  transform: translateX(-50%);
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+  pointer-events: none;
+}
+
+#show-panel,
+#back-button {
+  left: calc(12px + env(safe-area-inset-left));
+}
+
+/* ---- Editor panel ---- */
+
+#editor {
+  --ink: #2b2418;
+  --line: #ddd2bb;
+  --accent: #d9a02a;
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top));
+  left: calc(12px + env(safe-area-inset-left));
+  bottom: 12px;
+  z-index: 4;
+  width: 290px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  padding: 14px 16px 16px;
+  border-radius: 18px;
+  background: rgba(255, 252, 245, 0.94);
+  color: var(--ink);
+  font: 15px system-ui, sans-serif;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: pan-y;
+}
+
+#editor .editor-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+#editor .logo {
+  flex: 1;
+  margin: 0;
+  line-height: 0;
+}
+
+#editor .logo svg {
+  width: 100%;
+  height: auto;
+}
+
+#editor h2 {
+  margin: 6px 0 8px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.6;
+}
+
+#editor .field {
+  margin: 0 0 12px;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+#editor select {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 7px 10px;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+}
+
+#editor .features {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 10px;
+  margin-bottom: 10px;
+}
+
+#editor .features .check {
+  font-size: 13px;
+}
+
+#editor .group {
+  padding: 8px 10px 0;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+}
+
+#editor .group .field {
+  margin-bottom: 8px;
+}
+
+#editor label:not(.check),
+#editor legend {
+  display: block;
+  margin-bottom: 5px;
+  padding: 0;
+  font-weight: 600;
+}
+
+#editor .row {
+  display: flex;
+  gap: 8px;
+}
+
+#editor .row > * {
+  flex: 1;
+  min-width: 0;
+}
+
+#editor .row > .icon-button {
+  flex: none;
+}
+
+#editor input[type="number"] {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 7px 10px;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+#editor input[type="range"] {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+#editor .ends {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  opacity: 0.65;
+}
+
+#editor input:focus-visible,
+#editor button:focus-visible,
+#editor .segmented input:focus-visible + span,
+#editor .climates input:focus-visible + span {
+  outline: 3px solid var(--ink);
+  outline-offset: 1px;
+}
+
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border: 2px solid var(--line, #ddd2bb);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.segmented label,
+.climates label {
+  position: relative;
+  margin: 0 !important;
+  cursor: pointer;
+}
+
+.segmented input,
+.climates input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.segmented span {
+  display: block;
+  padding: 6px 2px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.segmented label + label span {
+  border-left: 2px solid var(--line, #ddd2bb);
+}
+
+.segmented input:checked + span {
+  background: var(--accent, #d9a02a);
+  color: #fff;
+}
+
+#opt-size {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+#opt-size label:nth-child(4) span {
+  border-left: 0;
+}
+
+#opt-size label:nth-child(n + 4) span {
+  border-top: 2px solid var(--line, #ddd2bb);
+}
+
+.segmented.five {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.segmented.five span {
+  font-size: 11.5px;
+}
+
+.climates {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+}
+
+.climates label > span {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 0 5px;
+  border: 2px solid var(--line, #ddd2bb);
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.climates .icon {
+  font-size: 22px;
+  line-height: 1.1;
+}
+
+.climates input:checked + span {
+  border-color: var(--accent, #d9a02a);
+  background: #fbefd2;
+}
+
+#editor button {
+  padding: 9px 12px;
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: inherit;
+  font: 600 14px system-ui, sans-serif;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+#editor button:hover {
+  border-color: var(--accent);
+}
+
+#editor button:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+#editor .icon-button {
+  width: 40px;
+  height: 38px;
+  padding: 0;
+  border-radius: 10px;
+  font-size: 18px;
+}
+
+#editor button.primary {
+  width: 100%;
+  padding: 11px;
+  border: 0;
+  background: var(--accent);
+  color: #fff;
+  font-size: 17px;
+}
+
+#editor button.primary:hover {
+  background: #c58d1c;
+}
+
+#editor .actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 2px solid var(--line);
+}
+
+#editor button.secondary {
+  border-color: #2aa3b8;
+  background: #2aa3b8;
+  color: #fff;
+  font-size: 15px;
+}
+
+#editor button.secondary:hover {
+  background: #23899b;
+}
+
+#editor .check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+#editor .check input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+#stats {
+  margin: 12px 0 0;
+  font-size: 12px;
+  opacity: 0.65;
+}
+
+#message {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fbe0d8;
+  color: #8a1f0c;
+  font-size: 13px;
+}
+
+/* Phones: the panel becomes a sheet along the bottom. */
+@media (max-width: 640px) {
+  #editor {
+    top: auto;
+    left: 8px;
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    width: auto;
+    max-height: 52vh;
+    padding: 10px 14px 14px;
+  }
+  #editor .logo svg {
+    max-width: 190px;
+  }
+  .pill {
+    font-size: 15px;
+    padding: 5px 12px;
+  }
+  #lang button {
+    width: 30px;
+    height: 22px;
+  }
+}
+
+/* The help line sits beside the editor panel, not under it. */
+body.panel-open #hud {
+  left: 318px;
+}
+
+@media (max-width: 640px) {
+  body.panel-open #hud {
+    display: none;
+  }
+}

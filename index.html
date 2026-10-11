@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>CityMaker</title>
+  <!-- The app lives in static/. This page lets `python -m http.server` run from the project root. -->
+  <meta http-equiv="refresh" content="0; url=static/">
+  <link rel="icon" href="static/favicon.svg" type="image/svg+xml">
+</head>
+<body>
+  <p><a href="static/">Open CityMaker</a></p>
+  <script>location.replace("static/" + location.search);</script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="4 10 120 120">
+  <defs>
+    <clipPath id="badge"><circle cx="64" cy="70" r="56"/></clipPath>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8fd3f4"/>
+      <stop offset="1" stop-color="#e3f6fc"/>
+    </linearGradient>
+  </defs>
+  <circle cx="64" cy="70" r="58" fill="#fffaf0"/>
+  <g clip-path="url(#badge)" stroke="#3b2a1a" stroke-linejoin="round">
+    <rect x="0" y="0" width="140" height="140" fill="url(#sky)" stroke="none"/>
+    <rect x="0" y="96" width="140" height="40" fill="#3aa0c8" stroke="none"/>
+    <ellipse cx="64" cy="96" rx="48" ry="9" fill="#f3dca0" stroke="none"/>
+    <path d="M22 96 Q40 70 64 72 Q90 68 106 96 Z" fill="#6cc04a" stroke="none"/>
+    <rect x="55" y="70" width="26" height="18" fill="#fff4dc" stroke-width="3"/>
+    <path d="M53 71 L68 60 L83 71 Z" fill="#c8553d" stroke-width="3"/>
+    <rect x="44" y="52" width="12" height="36" fill="#fff4dc" stroke-width="3"/>
+    <path d="M42 53 L50 28 L58 53 Z" fill="#c8553d" stroke-width="3"/>
+    <rect x="84" y="78" width="14" height="11" fill="#ffe2a8" stroke-width="3"/>
+    <path d="M82 79 L91 70 L100 79 Z" fill="#e5383b" stroke-width="3"/>
+  </g>
+  <circle cx="64" cy="70" r="56" fill="none" stroke="#3b2a1a" stroke-width="4"/>
+</svg>
